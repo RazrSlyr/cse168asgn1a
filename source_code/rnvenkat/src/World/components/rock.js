@@ -1,4 +1,4 @@
-import { getGrassMaterial, getRockMaterial } from "./materials.js";
+import { getRockMaterial } from "./materials.js";
 import { OBJLoader } from "../../../lib/OBJLoader.js";
 
 let mesh;

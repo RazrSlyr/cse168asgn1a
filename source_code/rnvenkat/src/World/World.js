@@ -10,18 +10,26 @@ import { Loop } from './systems/Loop.js';
 import { getDrawingMaterial, getGrassMaterial, getSkyboxMaterial } from './components/materials.js';
 import { createSphere } from './components/sphere.js';
 import { createTree } from './components/tree.js';
-import { Vector3, CanvasTexture, MeshBasicMaterial, Object3D } from '../../lib/three.module.js';
+import { Vector3, CanvasTexture, MeshBasicMaterial, Matrix4, Group } from '../../lib/three.module.js';
 import { createRock } from './components/rock.js';
 
 import { FogExp2 } from '../../lib/three.module.js';
 import { Lamp } from './components/Lamp.js';
-import { VRButton } from '../../lib/VRButton.js';
+
+import { VRSystem } from './systems/VRSystem.js';
 
 let camera;
 let controls;
 let renderer;
 let scene;
 let loop;
+let vrSystem;
+
+
+let ground;
+
+let grabables;
+
 
 class World {
   constructor(container) {
@@ -29,8 +37,9 @@ class World {
     camera = createCamera();
     renderer = createRenderer();
     scene = createScene();
+    grabables = new Group();
 
-    loop = new Loop(camera, scene, renderer);
+    loop = new Loop(camera, scene, renderer, this.render);
     container.append(renderer.domElement);
 
     // Camera controls
@@ -58,7 +67,7 @@ class World {
     sun.angle = 90;
     sun.distance = 10;
 
-    sun.tick = function(delta) {
+    sun.tick = function (delta) {
       sun.angle = (sun.angle + 20 * delta) % 360;
       sun.position.y = Math.sin(sun.angle / 180 * Math.PI) * sun.distance;
       sun.position.z = Math.cos(sun.angle / 180 * Math.PI) * sun.distance;
@@ -71,14 +80,14 @@ class World {
 
     // Fog that comes and goes
     scene.tick = (delta) => {
-      scene.fogDensity = Math.max(-1 * Math.sin(sun.angle / 180 * Math.PI)  / 30, 0);
+      scene.fogDensity = Math.max(-1 * Math.sin(sun.angle / 180 * Math.PI) / 30, 0);
       scene.fog = new FogExp2(fogColor, scene.fogDensity);
     }
 
 
     // Ground
     const grassMaterial = getGrassMaterial();
-    const ground = createBox(grassMaterial);
+    ground = createBox(grassMaterial);
     ground.position.y = -3;
     ground.scale.set(45, 1, 45);
     ground.receiveShadow = true;
@@ -97,7 +106,7 @@ class World {
     // Drawing Board
     const drawing = createBox(getDrawingMaterial());
     drawing.scale.set(3, 3, 0.1);
-    drawing.tick = function(delta) {
+    drawing.tick = function (delta) {
       const ctx = document.getElementById("webgl").getContext("webgl");
       const texture = new CanvasTexture(ctx.canvas);
       drawing.material.map = texture;
@@ -107,6 +116,7 @@ class World {
     scene.add(ambientLight, mainLight, sky, ground, drawing, lamp, sun);
 
     const resizer = new Resizer(container, camera, renderer);
+    vrSystem = new VRSystem(renderer, scene, ground, grabables);
   }
 
   async init() {
@@ -157,12 +167,17 @@ class World {
       rocks[i].position.copy(rockPositions[i]);
       rocks[i].scale.set(0.01, 0.01, 0.01);
       rocks[i].castShadow = true;
-      scene.add(rocks[i]);
+      grabables.add(rocks[i]);
     }
+
+    scene.add(grabables);
+
+    // Setup VR
+    vrSystem.setupVR();
   }
 
   render() {
-    renderer.render(scene, camera);
+    vrSystem.render();
   }
 
   start() {
@@ -171,22 +186,6 @@ class World {
 
   stop() {
     loop.stop();
-  }
-  
-  setupVR() {
-    // Setup webxr button
-    renderer.xr.enabled = true;
-    const enterVRButton = document.getElementById("asgn5").appendChild(VRButton.createButton(renderer));
-    enterVRButton.style.backgroundColor = "#04E762";
-
-    // Setup dolly for moving the renderer
-    const dolly = new Object3D();
-    dolly.position.z = 5;
-    dolly.add(camera);
-    scene.add(dolly);
-
-    const dummyCam = new Object3D();
-    camera.add(dummyCam);
   }
 }
 
