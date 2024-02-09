@@ -3,21 +3,17 @@ import { Clock } from '../../../lib/three.module.js';
 const clock = new Clock();
 
 class Loop {
-  constructor(camera, scene, renderer, renderFunction) {
+  constructor(camera, scene, renderer) {
     this.camera = camera;
     this.scene = scene;
     this.renderer = renderer;
     this.updatables = [];
-    this.renderFunction = renderFunction;
   }
 
   start() {
     this.renderer.setAnimationLoop(() => {
       // tell every animated object to tick forward one frame
       this.tick();
-
-      // call render function
-      this.renderFunction();
 
       // render a frame
       this.renderer.render(this.scene, this.camera);
